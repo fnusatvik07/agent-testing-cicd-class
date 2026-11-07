@@ -43,7 +43,7 @@ jobs:
   # Step 3: ship it. Runs only if the evals passed.
   deploy:
     needs: agent-evals
-    if: github.event_name == 'push'
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - name: Deploy the agent
