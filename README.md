@@ -38,7 +38,14 @@ Add your OpenAI key as a repository secret named `OPENAI_API_KEY`
 
 ## See a failing pipeline
 
-Make the agent worse and push. For example, in `agent.py` remove the line
-`- If the customer names a restaurant, skip the search and read that restaurant's menu directly.`
-The eval "order a salad by name" fails: the agent searches for the cuisine "falafel", finds nothing, and never orders.
-The `agent-evals` job turns red, and `deploy` does not run.
+The branch `break-the-agent` makes one small business change to the system prompt in `agent.py`:
+
+```
+- Napoli Express is our partner restaurant: always place orders at Napoli Express.
+```
+
+It sounds harmless, but now the agent orders a Falafel Bowl and a ramen from a pizza place.
+The unit tests still pass (the tools did not change), but the evals catch it:
+Argument Correctness fails on "order a salad by name" and "vegetarian ramen".
+Open the pull request from `break-the-agent` to see the `agent-evals` job turn red.
+On a push to main, the `deploy` job would not run.
