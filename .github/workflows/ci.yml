@@ -1,0 +1,50 @@
+name: Agent CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  DEEPEVAL_TELEMETRY_OPT_OUT: "YES"
+
+jobs:
+  # Step 1: fast tests on plain Python code. No AI, no API key.
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Run the tool tests
+        run: pytest tests -v
+
+  # Step 2: run the real agent and score it with DeepEval. Runs only if step 1 passed.
+  agent-evals:
+    needs: unit-tests
+    runs-on: ubuntu-latest
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Run the agent evals
+        run: deepeval test run evals/test_agent_evals.py
+
+  # Step 3: ship it. Runs only if the evals passed.
+  deploy:
+    needs: agent-evals
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy the agent
+        run: echo "All evals passed. Deploying QuickBite..."
