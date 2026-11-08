@@ -30,7 +30,7 @@ ORDERS = {"QB-1001": "Out for delivery, arriving in 10 minutes"}
 
 def search_restaurants(cuisine: str) -> str:
     """Find restaurants that serve a cuisine, and whether they are open now."""
-    found = [{"name": name, **info} for name, info in RESTAURANTS.items() if info["cuisine"] == cuisine.lower()]
+    found = [{"name": name, **info} for name, info in RESTAURANTS.items() if info["cuisine"] == cuisine.strip().lower()]
     return json.dumps(found)
 
 
@@ -41,9 +41,13 @@ def get_menu(restaurant: str) -> str:
 
 
 def place_order(restaurant: str, item: str) -> str:
-    """Place an order. Closed restaurants cannot take orders."""
-    if not RESTAURANTS.get(restaurant, {}).get("open"):
+    """Place an order. Closed restaurants cannot take orders, and you can only order what is on the menu."""
+    if restaurant not in RESTAURANTS:
+        return json.dumps({"error": f"Unknown restaurant: {restaurant}"})
+    if not RESTAURANTS[restaurant]["open"]:
         return json.dumps({"error": f"{restaurant} is closed"})
+    if item not in [dish["item"] for dish in MENUS[restaurant]]:
+        return json.dumps({"error": f"{item} is not on the menu at {restaurant}"})
     return json.dumps({"order_id": "QB-2002", "restaurant": restaurant, "item": item})
 
 

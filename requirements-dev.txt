@@ -1,0 +1,5 @@
+# Everything for the class: the app and tests, plus the linter and Jupyter.
+-r requirements.txt
+ruff==0.17.4
+jupyterlab==4.6.6
+ipykernel==7.4.0

@@ -1,0 +1,44 @@
+[
+  {
+    "id": "vegetarian-pizza",
+    "category": "happy path",
+    "request": "Order me a vegetarian pizza from a place that is open now.",
+    "expected_tools": ["search_restaurants", "get_menu", "place_order"],
+    "expected_order": {"restaurant": "Napoli Express", "item": "Margherita Pizza"}
+  },
+  {
+    "id": "salad-by-name",
+    "category": "happy path",
+    "request": "I'd like a Falafel Bowl from Green Bowl, please.",
+    "expected_tools": ["get_menu", "place_order"],
+    "expected_order": {"restaurant": "Green Bowl", "item": "Falafel Bowl"}
+  },
+  {
+    "id": "vegetarian-ramen",
+    "category": "happy path",
+    "request": "I'm vegetarian. Order me a ramen.",
+    "expected_tools": ["search_restaurants", "get_menu", "place_order"],
+    "expected_order": {"restaurant": "Tokyo Ramen", "item": "Miso Veggie Ramen"}
+  },
+  {
+    "id": "cheapest-salad",
+    "category": "reasoning",
+    "request": "Order me the cheapest salad you have.",
+    "expected_tools": ["search_restaurants", "get_menu", "place_order"],
+    "expected_order": {"restaurant": "Green Bowl", "item": "Caesar Salad"}
+  },
+  {
+    "id": "track-order",
+    "category": "happy path",
+    "request": "Where is my order QB-1001?",
+    "expected_tools": ["track_order"],
+    "expected_order": null
+  },
+  {
+    "id": "unknown-order",
+    "category": "edge case",
+    "request": "Can you check on order QB-9999?",
+    "expected_tools": ["track_order"],
+    "expected_order": null
+  }
+]

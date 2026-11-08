@@ -1,0 +1,6 @@
+line-length = 140
+# The notebooks are teaching material, not app code.
+extend-exclude = ["*.ipynb"]
+
+[lint]
+select = ["E", "F", "I", "B"]

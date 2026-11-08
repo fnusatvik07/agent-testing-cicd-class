@@ -5,15 +5,40 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # Run the evals every night too. The model behind the API can change even when our code does not.
+  schedule:
+    - cron: "0 6 * * *"
   workflow_dispatch:
+
+# A new push to the same branch cancels the old run, so we never pay for evals nobody will read.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Least privilege: the jobs can read the code and nothing else.
+permissions:
+  contents: read
 
 env:
   DEEPEVAL_TELEMETRY_OPT_OUT: "YES"
 
 jobs:
-  # Step 1: fast tests on plain Python code. No AI, no API key.
-  unit-tests:
+  # Stage 1a: style and obvious bugs, in seconds.
+  lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install ruff==0.17.4
+      - run: ruff check .
+
+  # Stage 1b: unit, contract and agent loop tests. No AI, no API key, same result every run.
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -21,13 +46,14 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -r requirements.txt
-      - name: Run the tool tests
+      - name: Run the tests
         run: pytest tests -v
 
-  # Step 2: run the real agent and score it with DeepEval. Runs only if step 1 passed.
+  # Stage 2: run the real agent and score it with DeepEval. Costs money, so it waits for stage 1 to pass.
   agent-evals:
-    needs: unit-tests
+    needs: [lint, tests]
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
     steps:
@@ -37,14 +63,32 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -r requirements.txt
+      - name: Check the API key is set
+        run: |
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "::error::OPENAI_API_KEY is not set. Add it under Settings, Secrets and variables, Actions."
+            exit 1
+          fi
       - name: Run the agent evals
-        run: deepeval test run evals/test_agent_evals.py
+        run: deepeval test run evals/ --color no
+      - name: Write the results to the run page
+        if: always()
+        run: python evals/report.py >> "$GITHUB_STEP_SUMMARY"
+      - name: Keep the full results for 30 days
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-results
+          path: .deepeval/.latest_test_run.json
+          include-hidden-files: true
+          retention-days: 30
 
-  # Step 3: ship it. Runs only if the evals passed.
+  # Stage 3: ship it. Only from main, only after every eval passed, and never from the nightly run.
   deploy:
     needs: agent-evals
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
+    environment: production
     steps:
       - name: Deploy the agent
         run: echo "All evals passed. Deploying QuickBite..."
